@@ -1,12 +1,11 @@
-
  chrome.runtime.onInstalled.addListener(() => {
- //"Improve English" menu item 
+  //"Improve English" menu item 
   chrome.contextMenus.create({
       id: "improveEnglish",
       title: "Improve English",
       contexts: ["selection"]
   });
-  // //"Improve English Creatively" menu item 
+  //"Improve English Creatively" menu item 
   chrome.contextMenus.create({
     id: "improveEnglishCreative",
     title: "Improve English Creatively",
@@ -18,36 +17,38 @@
     title: "Summarize",
     contexts: ["selection"]
   });
-  // New menu item for multiple choice questions
+  //"Multiple Choice Questions" menu item
   chrome.contextMenus.create({
     id: "generateMCQ",
     title: "Generate Multiple Choice Questions",
     contexts: ["selection"]
   });
+  //"Add Comments to Code" menu item
+  chrome.contextMenus.create({
+    id: "addCommentsCode",
+    title: "Add comments to code",
+    contexts: ["selection"]
+  });
 });
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "improveEnglish" || info.menuItemId === "improveEnglishCreative" || info.menuItemId === "summarize") {
-    const isCreative = (info.menuItemId === "improveEnglishCreative");
-    const toSummarize = (info.menuItemId === "summarize");
-    changeText(info.selectionText, tab.id, isCreative, toSummarize);
-  } else if (info.menuItemId === "generateMCQ") {
-    generateMCQ(info.selectionText, tab.id);
-  }
+chrome.contextMenus.onClicked.addListener((info) => {
+  fetchImprovement(info.selectionText, info.menuItemId);
 });
 
-function handleResponse(tabId, responseText, isCreative, toSummarize, isQuestions) {
+function handleResponse(responseText, menuItemId) {
   let title = 'Text Improvement'; // Default title
 
-  if (toSummarize) {
+  if (menuItemId === "summarize") {
     title = 'Summary';
-  } else if (isCreative) {
+  } else if (menuItemId === "improveEnglishCreative") {
     title = 'Text Improved Creatively';
-  } else if (isQuestions) {
+  } else if (menuItemId === "generateMCQ") {
     title = 'Multiple Choice Questions';
+  } else if (menuItemId === "addCommentsCode") {
+    title = 'Comments Added';
   }
 
-  // Create a small popup window to display the response text with the dynamic title
+  // Create a small popup window to display the response text with the appropriate title
   chrome.windows.create({
       url: "data:text/html," + encodeURIComponent('<!DOCTYPE html><html><head><title>' + title + '</title></head><body><p>' + responseText + '</p></body></html>'),
       type: 'popup',
@@ -56,15 +57,29 @@ function handleResponse(tabId, responseText, isCreative, toSummarize, isQuestion
   });
 }  
 
+function fetchImprovement(text, menuItemId) {
+  let promptText;
+  switch (menuItemId) {
+    case "summarize":
+      promptText = `Summarize the text into a single paragraph:\n${text}`;
+      break;
+    case "improveEnglishCreative":
+      promptText =`Improve the following English text creatively with a high temperature setting so the output will be much more creative or even crazy:\n${text}`;
+      break;
+    case "generateMCQ":
+      promptText = `Generate 10 multiple choice questions with four choices each about the following text. Ensure each question includes exactly four choices and mark the correct answer with a '#' character before it:\n${text}`;
+      break;
+    case "addCommentsCode":
+      if (!isCode(text)) {
+          handleResponse("This text does not appear to be code.", menuItemId);
+          return;  
+        }
+      promptText = `Add comments to the following code. Also display the comments and code. This is the code:\n${text}`;
+      break;
+    default:
+      promptText = `Improve the following English text to sound like it was written by an English teacher:\n${text}`;
+  }
 
-function changeText(text, tabId, isCreative, toSummarize) {
-  let promptText = toSummarize ?
-    `Summarize the text into a single paragraph:\n${text}` :
-    (isCreative ?
-        `Improve the following English text creatively with a high temperature setting so the output will be much more creative or even crazy:\n${text}` :
-        `Improve the following English text to sound like it was written by an English teacher:\n${text}`);
-  
-  console.log("Sending request to improve text:", text); 
   fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -78,69 +93,37 @@ function changeText(text, tabId, isCreative, toSummarize) {
               content: promptText
              
           }],
-          max_tokens: 150
+          max_tokens: 1024
       })
   })
-  .then(response => {
-    console.log("Received response:", response); // Log fetch response
-    return response.json();
-  })
+  .then(response => response.json())
   .then(data => {
-    console.log("Data processed:", data); // Log processed data
     if (data.choices && data.choices.length > 0) {
-        console.log("message content:", data.choices[0].message.content);
-        handleResponse(tabId, data.choices[0].message.content, isCreative, toSummarize);
+      if(menuItemId === "improveEnglishCreative" || menuItemId === "improveEnglish" || menuItemId === "summarize"){
+        handleResponse(data.choices[0].message.content, menuItemId);
+      } else if (menuItemId === "generateMCQ"){
+        displayMCQ(data.choices[0].message.content, menuItemId);
+      } else if (menuItemId === "addCommentsCode"){
+        displayCodeComments(data.choices[0].message.content, menuItemId);
+      }
     }
   })
   .catch(error => {
     console.error('Error with fetch operation:', error);
-    handleResponse(tabId, `Error: ${error.message}`);
+    handleResponse(`Error: ${error.message}`, menuItemId);
   });
 }
 
-function generateMCQ(text, tabId) {
-  // Create a prompt to request multiple choice questions from the API
-  let promptText = `Generate 10 multiple choice questions with four choices each about the following text. Ensure each question includes exactly four choices and mark the correct answer with a '#' character before it:\n${text}`;
-  
-  console.log("Sending request to generate MCQ:", text); 
-  fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer sk-proj-J7sXcS7k7lrtDdVKOchHT3BlbkFJO0K5XWRMHys8X71pqela' // Add your OpenAI API token here
-      },
-      body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [{
-              role: "user",
-              content: promptText
-          }],
-          max_tokens: 1024 // Adjust token count as necessary
-      })
-  })
-
-  .then(response => {
-    console.log("Received response:", response); // Log fetch response
-    return response.json();
-  })
-  .then(data => {
-    console.log("Data processed:", data); // Log processed data
-    if (data.choices && data.choices.length > 0) {
-        displayMCQ(tabId, data.choices[0].message.content);
-    }
-  })
-  .catch(error => {
-    console.error('Error with fetch operation:', error);
-    handleResponse(tabId, `Error: ${error.message}`, false, false);
-  });
+function displayCodeComments(text, menuItemId){
+  let htmlContent = text.split('\n').map(line => `<p>${line}</p>`).join('');
+  handleResponse(htmlContent, menuItemId);
 }
 
-function displayMCQ(tabId, mcqText) {
-  let htmlContent = mcqText.split('\n').map((item, index) => {
-    // Check if the item contains '#'
+function displayMCQ(mcqText, menuItemId) {
+  let htmlContent = mcqText.split('\n').map((item) => {
+    // Check if the item contains '#' - indicating it is the correct answer 
     if (item.includes('#')) {
-      // Bold the item, color it green, and remove all instances of '#'
-      let cleanedItem = item.replace(/#/g, ''); // Remove all '#' characters
+      let cleanedItem = item.replace(/#/g, ''); // Bold the item, color it green, and remove all instances of '#'
       return `<div><strong style="color: green;">${cleanedItem}</strong></div>`;
     } else {
       // Non-modified items
@@ -149,6 +132,18 @@ function displayMCQ(tabId, mcqText) {
   }).join('');
 
   // Create a popup window to display the MCQs
-  handleResponse(tabId, htmlContent, false, false, true);
+  handleResponse(htmlContent, menuItemId);
+}
+
+function isCode(text) {
+  // Simple pattern detection for common programming elements
+  const patterns = [
+      /function\s+\w+\s*\(/,  // Matches function declarations
+      /const|let|var\s+\w+\s*=/,  // Matches variable declarations
+      /\w+\s*\(\s*\)/,  // Matches function calls
+      /\{|\}/,  // Matches braces
+      /;/  // Matches semicolons
+  ];
+  return patterns.some(pattern => pattern.test(text));
 }
 
