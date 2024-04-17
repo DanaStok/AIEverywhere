@@ -6,11 +6,17 @@
       title: "Improve English",
       contexts: ["selection"]
   });
+  chrome.contextMenus.create({
+    id: "improveEnglishCreative",
+    title: "Improve English Creatively",
+    contexts: ["selection"]
+  });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "improveEnglish") {
-      improveEnglish(info.selectionText, tab.id);
+  if (info.menuItemId === "improveEnglish" || info.menuItemId === "improveEnglishCreative") {
+    const isCreative = (info.menuItemId === "improveEnglishCreative");
+    improveEnglish(info.selectionText, tab.id, isCreative);
   }
 });
 
@@ -24,7 +30,11 @@ function handleResponse(tabId, responseText) {
   });
 }
 
-function improveEnglish(text, tabId) {
+function improveEnglish(text, tabId, isCreative) {
+  const promptText = isCreative ?
+    `Improve the following English text creatively with a high temperature setting so the output will be much more creative or even crazy:\n${text}` :
+    `Improve the following English text to sound like it was written by an English teacher:\n${text}`;
+
   console.log("Sending request to improve text:", text); // Log text being sent
   fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -36,7 +46,8 @@ function improveEnglish(text, tabId) {
           model: "gpt-3.5-turbo",
           messages: [{
               role: "user",
-              content: `Improve the following English text to sound like it was written by an English teacher:\n\n${text}`
+              content: promptText
+             
           }],
           max_tokens: 150
       })
