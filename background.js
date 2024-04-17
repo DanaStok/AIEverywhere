@@ -36,17 +36,25 @@ chrome.contextMenus.onClicked.addListener((info) => {
 });
 
 function handleResponse(responseText, menuItemId) {
-  let title = 'Text Improvement'; // Default title
+  let title;
 
-  if (menuItemId === "summarize") {
-    title = 'Summary';
-  } else if (menuItemId === "improveEnglishCreative") {
-    title = 'Text Improved Creatively';
-  } else if (menuItemId === "generateMCQ") {
-    title = 'Multiple Choice Questions';
-  } else if (menuItemId === "addCommentsCode") {
-    title = 'Comments Added';
+  switch(menuItemId){
+    case("summarize"):
+      title = 'Summary';
+      break;
+    case("improveEnglishCreative"):
+      title = 'Text Improved Creatively';
+      break;
+    case("generateMCQ"):
+      title = 'Multiple Choice Questions';
+      break;
+    case("addCommentsCode"):
+      title = 'Code with Comments Added';
+      break;
+    default:
+      title = 'Text Improvement'; // Default title
   }
+  
 
   // Create a small popup window to display the response text with the appropriate title
   chrome.windows.create({
@@ -74,7 +82,7 @@ function fetchImprovement(text, menuItemId) {
           handleResponse("This text does not appear to be code.", menuItemId);
           return;  
         }
-      promptText = `Add comments to the following code. Also display the comments and code. This is the code:\n${text}`;
+      promptText = `Add comments to the following code and show it with the code. This is the code:\n${text}`;
       break;
     default:
       promptText = `Improve the following English text to sound like it was written by an English teacher:\n${text}`;
