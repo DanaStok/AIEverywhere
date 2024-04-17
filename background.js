@@ -11,12 +11,18 @@
     title: "Improve English Creatively",
     contexts: ["selection"]
   });
+  chrome.contextMenus.create({
+    id: "summarize",
+    title: "Summarize",
+    contexts: ["selection"]
+  });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "improveEnglish" || info.menuItemId === "improveEnglishCreative") {
+  if (info.menuItemId === "improveEnglish" || info.menuItemId === "improveEnglishCreative" || info.menuItemId === "summarize") {
     const isCreative = (info.menuItemId === "improveEnglishCreative");
-    improveEnglish(info.selectionText, tab.id, isCreative);
+    const toSummarize = (info.menuItemId === "summarize");
+    improveEnglish(info.selectionText, tab.id, isCreative, toSummarize);
   }
 });
 
@@ -30,11 +36,13 @@ function handleResponse(tabId, responseText) {
   });
 }
 
-function improveEnglish(text, tabId, isCreative) {
-  const promptText = isCreative ?
-    `Improve the following English text creatively with a high temperature setting so the output will be much more creative or even crazy:\n${text}` :
-    `Improve the following English text to sound like it was written by an English teacher:\n${text}`;
-
+function improveEnglish(text, tabId, isCreative, toSummarize) {
+  let promptText = toSummarize ?
+    `Summarize the text into a single paragraph:\n${text}` :
+    (isCreative ?
+        `Improve the following English text creatively with a high temperature setting so the output will be much more creative or even crazy:\n${text}` :
+        `Improve the following English text to sound like it was written by an English teacher:\n${text}`);
+  
   console.log("Sending request to improve text:", text); // Log text being sent
   fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
