@@ -1,3 +1,4 @@
+
  chrome.runtime.onInstalled.addListener(() => {
   //"Improve English" menu item 
   chrome.contextMenus.create({
@@ -52,10 +53,9 @@ function handleResponse(responseText, menuItemId) {
       title = 'Code with Comments Added';
       break;
     default:
-      title = 'Text Improvement'; // Default title
+      title = 'Text Improvement'; 
   }
   
-
   // Create a small popup window to display the response text with the appropriate title
   chrome.windows.create({
       url: "data:text/html," + encodeURIComponent('<!DOCTYPE html><html><head><title>' + title + '</title></head><body><p>' + responseText + '</p></body></html>'),
@@ -65,6 +65,7 @@ function handleResponse(responseText, menuItemId) {
   });
 }  
 
+//Interacts with openAI and returns the desired text 
 function fetchImprovement(text, menuItemId) {
   let promptText;
   switch (menuItemId) {
@@ -78,12 +79,14 @@ function fetchImprovement(text, menuItemId) {
       promptText = `Generate 10 multiple choice questions with four choices each about the following text. Ensure each question includes exactly four choices and mark the correct answer with a '#' character before it:\n${text}`;
       break;
     case "addCommentsCode":
-      if (!isCode(text)) {
-          handleResponse("This text does not appear to be code.", menuItemId);
-          return;  
-        }
-      promptText = `Add comments to the following code and show it with the code. This is the code:\n${text}`;
+      promptText = `Take the folowing text and determine if it is code.
+      We know it is code if it has elements that look like the following:\n${Code[0]}.
+      Notice that if it is code I want you to give me the same code but with comments (Do not tell me what language it is written in).
+      An example of code with comments looks like this:\n${Code[1]}. 
+      If it is not code, tell me it is not code.
+      This is the text to evaluate:\n${text}`;
       break;
+
     default:
       promptText = `Improve the following English text to sound like it was written by an English teacher:\n${text}`;
   }
@@ -122,36 +125,92 @@ function fetchImprovement(text, menuItemId) {
   });
 }
 
-function displayCodeComments(text, menuItemId){
-  let htmlContent = text.split('\n').map(line => `<p>${line}</p>`).join('');
+//Format of the code comments
+function displayCodeComments(text, menuItemId) {
+  let htmlContent = '<pre><code>';
+  htmlContent += text.split('\n').map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
+  htmlContent += '</code></pre>';
   handleResponse(htmlContent, menuItemId);
 }
 
+//Format of the multiple choice questions
 function displayMCQ(mcqText, menuItemId) {
-  let htmlContent = mcqText.split('\n').map((item) => {
-    // Check if the item contains '#' - indicating it is the correct answer 
-    if (item.includes('#')) {
-      let cleanedItem = item.replace(/#/g, ''); // Bold the item, color it green, and remove all instances of '#'
-      return `<div><strong style="color: green;">${cleanedItem}</strong></div>`;
-    } else {
-      // Non-modified items
-      return `<div>${item}</div>`;
+  let htmlContent = '';
+  const mcqItems = mcqText.split('\n');
+  let currentQuestion = '';
+  let questionIndex = 0; // Index to uniquely identify each set of answers
+
+  for (let i = 0; i < mcqItems.length; i++) {
+    const item = mcqItems[i];
+
+    if (item.match(/^\d+\./)) { // Match numbers followed by a dot to identify questions
+      // Update the current question
+      currentQuestion = item;
+      questionIndex++; // Increment the question index for each new question
+
+      htmlContent += `<div><span class="question-text">${currentQuestion}</span></div>`;
+    } else if (item.trim() !== '') { // Avoid empty items being processed as answers
+      // Parse the answer text and its correctness
+      const isCorrectAnswer = item.includes('#');
+      const answerText = isCorrectAnswer ? item.replace(/#/g, '') : item;
+
+      htmlContent += `
+        <div>
+          <label>
+            <input type="radio" class="answer-btn" name="question-${questionIndex}" data-correct="${isCorrectAnswer}" data-question="${questionIndex}" onclick="checkAnswer(this)">
+            ${answerText}
+          </label>
+        </div>
+      `;
     }
-  }).join('');
+  }
+
+  // Add the event listener function to handle answer checking
+  htmlContent += `
+    <script>
+      function checkAnswer(btn) {
+        const isCorrect = btn.dataset.correct === 'true';
+        const question = btn.dataset.question;
+
+        // Disable all radio buttons for this question
+        const answerBtns = Array.from(document.querySelectorAll('.answer-btn')).filter(btn => btn.dataset.question === question);
+        answerBtns.forEach(btn => btn.disabled = true);
+
+        // Highlight the answer based on correctness
+        const answerLabel = btn.parentNode; // Get the label element surrounding the radio button
+        if (isCorrect) {
+          answerLabel.style.backgroundColor = 'green';
+        } else {
+          answerLabel.style.backgroundColor = 'red';
+
+          const correctBtn = answerBtns.find(btn => btn.dataset.correct === 'true');
+          if (correctBtn) {
+            correctBtn.parentNode.style.backgroundColor = 'green';
+          }
+        }
+      }
+    </script>
+  `;
 
   // Create a popup window to display the MCQs
   handleResponse(htmlContent, menuItemId);
 }
 
-function isCode(text) {
-  // Simple pattern detection for common programming elements
-  const patterns = [
-      /function\s+\w+\s*\(/,  // Matches function declarations
-      /const|let|var\s+\w+\s*=/,  // Matches variable declarations
-      /\w+\s*\(\s*\)/,  // Matches function calls
-      /\{|\}/,  // Matches braces
-      /;/  // Matches semicolons
+//Examples used to check if text is code
+function Code() {
+  const codeExamples = [
+    "function greet(name) {\n  console.log('Hello, ' + name + '!');\n}",
+    "const sum = (a, b) => a + b;",
+    "let count = 0;\nfor (let i = 0; i < 10; i++) {\n  count += i;\n}",
+    "class Person {\n  constructor(name, age) {\n    this.name = name;\n    this.age = age;\n  }\n\n  greet() {\n    console.log(`Hello, my name is ${this.name}`);\n  }\n}",
   ];
-  return patterns.some(pattern => pattern.test(text));
-}
 
+  const codeWithComments = [
+    "// Function declaration\nfunction greet(name) {\n  // Print a greeting with the name\n  console.log('Hello, ' + name + '!');\n}",
+    "// Arrow function expression\nconst sum = (a, b) => a + b; // Returns the sum of a and b",
+    "// Variable declaration\nlet count = 0;\n\n// For loop\nfor (let i = 0; i < 10; i++) {\n  // Add the current value of i to count\n  count += i;\n}",
+    "// Class definition\nclass Person {\n  // Constructor method\n  constructor(name, age) {\n    // Assign properties\n    this.name = name;\n    this.age = age;\n  }\n\n  // Instance method\n  greet() {\n    // Print a greeting with the person's name\n    console.log(`Hello, my name is ${this.name}`);\n  }\n}",
+  ];
+
+  return [codeExamples, codeWithComments];
+} 
