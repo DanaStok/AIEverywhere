@@ -76,14 +76,17 @@ function fetchImprovement(text, menuItemId) {
       promptText =`Improve the following English text creatively with a high temperature setting so the output will be much more creative or even crazy:\n${text}`;
       break;
     case "generateMCQ":
-      promptText = `Generate 10 multiple choice questions with four choices each about the following text. Ensure each question includes exactly four choices and mark the correct answer with a '#' character before it:\n${text}`;
+      promptText = `Generate 10 multiple choice questions with four choices each about the following text.\n
+      Ensure each question includes exactly four choices and mark the correct answer with a '#'.\n
+      A question should look like this:\n${questionExample[0]}.\n
+      Do this on the following text:\n${text}`;
       break;
     case "addCommentsCode":
       promptText = `Take the folowing text and determine if it is code.
-      We know it is code if it has elements that look like the following:\n${Code[0]}.
-      Notice that if it is code I want you to give me the same code but with comments (Do not tell me what language it is written in).
-      An example of code with comments looks like this:\n${Code[1]}. 
-      If it is not code, tell me it is not code.
+      We know it is code if it has elements that look like the following:\n${codeExample[0]}.
+      Notice that if it is code I want you to give me the same code but with comments (Do not tell me what language it is written in).\n
+      An example of code with comments looks like this:\n${codeExample[1]}. 
+      If it is not code, tell me it is not code.\n
       This is the text to evaluate:\n${text}`;
       break;
 
@@ -167,29 +170,30 @@ function displayMCQ(mcqText, menuItemId) {
 
   // Add the event listener function to handle answer checking
   htmlContent += `
-    <script>
-      function checkAnswer(btn) {
-        const isCorrect = btn.dataset.correct === 'true';
-        const question = btn.dataset.question;
-
-        // Disable all radio buttons for this question
-        const answerBtns = Array.from(document.querySelectorAll('.answer-btn')).filter(btn => btn.dataset.question === question);
-        answerBtns.forEach(btn => btn.disabled = true);
-
-        // Highlight the answer based on correctness
-        const answerLabel = btn.parentNode; // Get the label element surrounding the radio button
-        if (isCorrect) {
-          answerLabel.style.backgroundColor = 'green';
-        } else {
-          answerLabel.style.backgroundColor = 'red';
-
-          const correctBtn = answerBtns.find(btn => btn.dataset.correct === 'true');
-          if (correctBtn) {
-            correctBtn.parentNode.style.backgroundColor = 'green';
-          }
+  <script>
+    function checkAnswer(btn) {
+      const isCorrect = btn.dataset.correct === 'true';
+      const question = btn.dataset.question;
+    
+      // Disable all radio buttons for this question
+      const answerBtns = Array.from(document.querySelectorAll('.answer-btn')).filter(btn => btn.dataset.question === question);
+      answerBtns.forEach(btn => btn.disabled = true);
+    
+      // Highlight the answer based on correctness
+      const answerLabel = btn.parentNode; // Get the label element surrounding the radio button
+      if (isCorrect) {
+        answerLabel.style.color = 'green';
+      } else {
+        answerLabel.style.color = 'red';
+        
+        // Find the correct answer button and highlight it
+        const correctBtn = answerBtns.find(btn => btn.dataset.correct === 'true');
+        if (correctBtn) {
+          correctBtn.parentNode.style.color = 'green';
         }
       }
-    </script>
+    }    
+  </script>
   `;
 
   // Create a popup window to display the MCQs
@@ -197,7 +201,7 @@ function displayMCQ(mcqText, menuItemId) {
 }
 
 //Examples used to check if text is code
-function Code() {
+function codeExample() {
   const codeExamples = [
     "function greet(name) {\n  console.log('Hello, ' + name + '!');\n}",
     "const sum = (a, b) => a + b;",
@@ -214,3 +218,8 @@ function Code() {
 
   return [codeExamples, codeWithComments];
 } 
+
+function questionExample(){
+    const qExample = ["1. What is another name for the region where Israel is located historically?:\na) Mesopotamia\nb) Canaan#\nc) Persia\nd) Egypt"]
+    return [qExample];
+}
