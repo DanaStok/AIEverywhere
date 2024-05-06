@@ -15,9 +15,8 @@
     "service_worker": "background.js"
   },
   "icons": {
-    "16": "icons/icon.png",
-    "48": "icons/icon.png",
-    "128": "icons/icon.png"
+    "16": "./icons/download-icon-chrome+icon-1320192123565798996_128.icns",
+    "128": "./icons/download-icon-chrome+icon-1320192123565798996_128.icns"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

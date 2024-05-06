@@ -189,7 +189,7 @@ function displayMCQ(mcqText, menuItemId) {
         // Find the correct answer button and highlight it
         const correctBtn = answerBtns.find(btn => btn.dataset.correct === 'true');
         if (correctBtn) {
-          correctBtn.parentNode.style.color = 'green';
+          correctBtn.parentNode.style.color = 'green'; // Ensure this is inside the 'if' block
         }
       }
     }    
@@ -218,7 +218,7 @@ function codeExample() {
 
   return [codeExamples, codeWithComments];
 } 
-
+//Example of multiple choice question desired format 
 function questionExample(){
     const qExample = ["1. What is another name for the region where Israel is located historically?:\na) Mesopotamia\nb) Canaan#\nc) Persia\nd) Egypt"]
     return [qExample];
