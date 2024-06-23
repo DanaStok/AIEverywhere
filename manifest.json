@@ -12,7 +12,8 @@
     "https://api.openai.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "icons": {
     "16": "./icons/download-icon-chrome+icon-1320192123565798996_128.icns",
