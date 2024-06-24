@@ -22,7 +22,7 @@ This Chrome extension leverages the power of the OpenAI API to enhance your read
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/text-code-enhancer-extension.git
+   git clone https://github.com/DanaStok/AIEverywhere.git
 2. Navigate to the project directory:
    ```bash
    cd text-code-enhancer-extension
